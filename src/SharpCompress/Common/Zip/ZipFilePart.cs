@@ -9,6 +9,7 @@ using SharpCompress.Compressors.Deflate;
 using SharpCompress.Compressors.Deflate64;
 using SharpCompress.Compressors.LZMA;
 using SharpCompress.Compressors.PPMd;
+using SharpCompress.Compressors.Xz;
 using SharpCompress.IO;
 
 namespace SharpCompress.Common.Zip;
@@ -64,7 +65,17 @@ internal abstract class ZipFilePart : FilePart
         {
             case ZipCompressionMethod.None:
             {
-                return stream;
+                if( stream is ReadOnlySubStream )
+                {
+                    return stream;
+                }
+
+                if( Header.CompressedSize > 0 )
+                {
+                    return new ReadOnlySubStream(stream, Header.CompressedSize);
+                }
+
+                return new DataDescriptorStream(stream);
             }
             case ZipCompressionMethod.Deflate:
             {
@@ -96,6 +107,10 @@ internal abstract class ZipFilePart : FilePart
                         ? -1
                         : Header.UncompressedSize
                 );
+            }
+            case ZipCompressionMethod.Xz:
+            {
+                return new XZStream(stream);
             }
             case ZipCompressionMethod.PPMd:
             {
